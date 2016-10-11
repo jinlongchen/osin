@@ -1,7 +1,7 @@
 package osin
 
 import (
-	"net/http"
+//	"net/http"
 	"net/url"
 	"regexp"
 	"time"
@@ -42,7 +42,8 @@ type AuthorizeRequest struct {
 	UserData interface{}
 
 	// HttpRequest *http.Request for special use
-	HttpRequest *http.Request
+	//HttpRequest *http.Request
+	HttpRequest *fasthttp.RequestCtx
 
 	// Optional code_challenge as described in rfc7636
 	CodeChallenge string
@@ -104,11 +105,11 @@ type AuthorizeTokenGen interface {
 
 // HandleAuthorizeRequest is the main http.HandlerFunc for handling
 // authorization requests
-func (s *Server) HandleAuthorizeRequest(w *Response, r *http.Request) *AuthorizeRequest {
-	r.ParseForm()
+func (s *Server) HandleAuthorizeRequest(w *Response, r *fasthttp.RequestCtx) *AuthorizeRequest {
+	//r.ParseForm()
 
 	// create the authorization request
-	unescapedUri, err := url.QueryUnescape(r.Form.Get("redirect_uri"))
+	unescapedUri, err := url.QueryUnescape(getFormValue(r, "redirect_uri"))
 	if err != nil {
 		w.SetErrorState(E_INVALID_REQUEST, "", "")
 		w.InternalError = err
@@ -116,15 +117,15 @@ func (s *Server) HandleAuthorizeRequest(w *Response, r *http.Request) *Authorize
 	}
 
 	ret := &AuthorizeRequest{
-		State:       r.Form.Get("state"),
-		Scope:       r.Form.Get("scope"),
+		State:       getFormValue(r, "state"),
+		Scope:       getFormValue(r, "scope"),
 		RedirectUri: unescapedUri,
 		Authorized:  false,
 		HttpRequest: r,
 	}
 
 	// must have a valid client
-	ret.Client, err = w.Storage.GetClient(r.Form.Get("client_id"))
+	ret.Client, err = w.Storage.GetClient(getFormValue(r, "client_id"))
 	if err != nil {
 		w.SetErrorState(E_SERVER_ERROR, "", ret.State)
 		w.InternalError = err
@@ -153,7 +154,7 @@ func (s *Server) HandleAuthorizeRequest(w *Response, r *http.Request) *Authorize
 
 	w.SetRedirect(ret.RedirectUri)
 
-	requestType := AuthorizeRequestType(r.Form.Get("response_type"))
+	requestType := AuthorizeRequestType(getFormValue(r, "response_type"))
 	if s.Config.AllowedAuthorizeTypes.Exists(requestType) {
 		switch requestType {
 		case CODE:
@@ -161,14 +162,14 @@ func (s *Server) HandleAuthorizeRequest(w *Response, r *http.Request) *Authorize
 			ret.Expiration = s.Config.AuthorizationExpiration
 
 			// Optional PKCE support (https://tools.ietf.org/html/rfc7636)
-			if codeChallenge := r.Form.Get("code_challenge"); len(codeChallenge) == 0 {
+			if codeChallenge := getFormValue(r, "code_challenge"); len(codeChallenge) == 0 {
 				if s.Config.RequirePKCEForPublicClients && CheckClientSecret(ret.Client, "") {
 					// https://tools.ietf.org/html/rfc7636#section-4.4.1
 					w.SetErrorState(E_INVALID_REQUEST, "code_challenge (rfc7636) required for public clients", ret.State)
 					return nil
 				}
 			} else {
-				codeChallengeMethod := r.Form.Get("code_challenge_method")
+				codeChallengeMethod := getFormValue(r, "code_challenge_method")
 				// allowed values are "plain" (default) and "S256", per https://tools.ietf.org/html/rfc7636#section-4.3
 				if len(codeChallengeMethod) == 0 {
 					codeChallengeMethod = PKCE_PLAIN
