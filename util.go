@@ -3,8 +3,8 @@ package osin
 import (
 	"encoding/base64"
 	"errors"
-	"net/http"
 	"strings"
+	"github.com/valyala/fasthttp"
 )
 
 // Parse basic authentication header
@@ -25,19 +25,18 @@ func CheckClientSecret(client Client, secret string) bool {
 	case ClientSecretMatcher:
 		// Prefer the more secure method of giving the secret to the client for comparison
 		return client.ClientSecretMatches(secret)
-	default:
-		// Fallback to the less secure method of extracting the plain text secret from the client for comparison
-		return client.GetSecret() == secret
 	}
+	// Fallback to the less secure method of extracting the plain text secret from the client for comparison
+	return client.GetSecret() == secret
 }
 
 // Return authorization header data
-func CheckBasicAuth(r *http.Request) (*BasicAuth, error) {
-	if r.Header.Get("Authorization") == "" {
+func CheckBasicAuth(r *fasthttp.RequestCtx) (*BasicAuth, error) {
+	if getFormValue(r, "Authorization") == "" {
 		return nil, nil
 	}
 
-	s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	s := strings.SplitN(getFormValue(r, "Authorization"), " ", 2)
 	if len(s) != 2 || s[0] != "Basic" {
 		return nil, errors.New("Invalid authorization header")
 	}
@@ -55,9 +54,9 @@ func CheckBasicAuth(r *http.Request) (*BasicAuth, error) {
 }
 
 // Return "Bearer" token from request. The header has precedence over query string.
-func CheckBearerAuth(r *http.Request) *BearerAuth {
-	authHeader := r.Header.Get("Authorization")
-	authForm := r.Form.Get("code")
+func CheckBearerAuth(r *fasthttp.RequestCtx) *BearerAuth {
+	authHeader := getFormValue(r, "Authorization")
+	authForm := getFormValue(r, "code")
 	if authHeader == "" && authForm == "" {
 		return nil
 	}
@@ -78,14 +77,15 @@ func CheckBearerAuth(r *http.Request) *BearerAuth {
 // getClientAuth checks client basic authentication in params if allowed,
 // otherwise gets it from the header.
 // Sets an error on the response if no auth is present or a server error occurs.
-func getClientAuth(w *Response, r *http.Request, allowQueryParams bool) *BasicAuth {
+func getClientAuth(w *Response, r *fasthttp.RequestCtx, allowQueryParams bool) *BasicAuth {
 
 	if allowQueryParams {
 		// Allow for auth without password
-		if _, hasSecret := r.Form["client_secret"]; hasSecret {
+		client_secret := getFormValue(r, "client_secret")
+		if client_secret != "" {
 			auth := &BasicAuth{
-				Username: r.Form.Get("client_id"),
-				Password: r.Form.Get("client_secret"),
+				Username: getFormValue(r, "client_id"),
+				Password: client_secret,
 			}
 			if auth.Username != "" {
 				return auth
@@ -105,4 +105,15 @@ func getClientAuth(w *Response, r *http.Request, allowQueryParams bool) *BasicAu
 		return nil
 	}
 	return auth
+}
+
+func getFormValue(r *fasthttp.RequestCtx, key string) string {
+	ret := r.QueryArgs().Peek(key)
+	if ret == nil {
+		ret = r.PostArgs().Peek(key)
+	}
+	if ret == nil {
+		return ""
+	}
+	return string(ret)
 }

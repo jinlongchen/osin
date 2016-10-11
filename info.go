@@ -1,8 +1,8 @@
 package osin
 
 import (
-	"net/http"
 	"time"
+	"github.com/valyala/fasthttp"
 )
 
 // InfoRequest is a request for information about some AccessData
@@ -13,8 +13,8 @@ type InfoRequest struct {
 
 // HandleInfoRequest is an http.HandlerFunc for server information
 // NOT an RFC specification.
-func (s *Server) HandleInfoRequest(w *Response, r *http.Request) *InfoRequest {
-	r.ParseForm()
+func (s *Server) HandleInfoRequest(w *Response, r *fasthttp.RequestCtx) *InfoRequest {
+	//r.ParseForm()
 	bearer := CheckBearerAuth(r)
 	if bearer == nil {
 		w.SetError(E_INVALID_REQUEST, "")
@@ -61,7 +61,7 @@ func (s *Server) HandleInfoRequest(w *Response, r *http.Request) *InfoRequest {
 }
 
 // FinishInfoRequest finalizes the request handled by HandleInfoRequest
-func (s *Server) FinishInfoRequest(w *Response, r *http.Request, ir *InfoRequest) {
+func (s *Server) FinishInfoRequest(w *Response, r *fasthttp.RequestCtx, ir *InfoRequest) {
 	// don't process if is already an error
 	if w.IsError {
 		return

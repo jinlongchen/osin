@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"regexp"
 	"time"
+	"github.com/valyala/fasthttp"
 )
 
 // AuthorizeRequestType is the type for OAuth param `response_type`
@@ -199,7 +200,7 @@ func (s *Server) HandleAuthorizeRequest(w *Response, r *http.Request) *Authorize
 	return nil
 }
 
-func (s *Server) FinishAuthorizeRequest(w *Response, r *http.Request, ar *AuthorizeRequest) {
+func (s *Server) FinishAuthorizeRequest(w *Response, r *fasthttp.RequestCtx, ar *AuthorizeRequest) {
 	// don't process if is already an error
 	if w.IsError {
 		return
