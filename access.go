@@ -121,7 +121,7 @@ func (s *Server) HandleAccessRequest(w *Response, r *fasthttp.RequestCtx) *Acces
 			w.InternalError = errors.New("Request must be POST")
 			return nil
 		}
-	} else if method == "POST" {
+	} else if method != "POST" {
 		w.SetError(E_INVALID_REQUEST, "")
 		w.InternalError = errors.New("Request must be POST")
 		return nil
