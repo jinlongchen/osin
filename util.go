@@ -108,10 +108,12 @@ func getClientAuth(w *Response, r *fasthttp.RequestCtx, allowQueryParams bool) *
 }
 
 func getFormValue(r *fasthttp.RequestCtx, key string) string {
-	ret := r.QueryArgs().Peek(key)
-	if ret == nil {
-		ret = r.PostArgs().Peek(key)
-	}
+	ret := r.FormValue(key)
+	//ret := r.QueryArgs().Peek(key)
+	//if ret == nil {
+	//	r.FormValue(key)
+	//	ret = r.PostArgs().Peek(key)
+	//}
 	if ret == nil {
 		println("getFormValue ", key, ":")
 		return ""
