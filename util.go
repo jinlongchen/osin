@@ -113,7 +113,9 @@ func getFormValue(r *fasthttp.RequestCtx, key string) string {
 		ret = r.PostArgs().Peek(key)
 	}
 	if ret == nil {
+		println("getFormValue ", key, ":")
 		return ""
 	}
+	println("getFormValue ", key, ":", string(ret))
 	return string(ret)
 }
