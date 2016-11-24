@@ -127,12 +127,12 @@ func (s *Server) HandleAccessRequest(w *Response, r *fasthttp.RequestCtx) *Acces
 		return nil
 	}
 
-//	err := r.ParseForm()
-//	if err != nil {
-//		w.SetError(E_INVALID_REQUEST, "")
-//		w.InternalError = err
-//		return nil
-//	}
+	err := r.ParseForm()
+	if err != nil {
+		w.SetError(E_INVALID_REQUEST, "")
+		w.InternalError = err
+		return nil
+	}
 
 	grantType := AccessRequestType(string(getFormValue(r, "grant_type")))
 	if s.Config.AllowedAccessTypes.Exists(grantType) {
